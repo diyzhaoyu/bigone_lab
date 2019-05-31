@@ -1,0 +1,67 @@
+# 服务器完美日记
+from pymongo import MongoClient
+from multiprocessing import Pool
+import psycopg2
+import pandas as pd
+import numpy as np
+import Levenshtein
+import os
+
+sql = '''
+with base_1 as(
+select distinct on (id) *
+from public.perfect_dairy
+)
+,base as(
+select distinct on (displayusernick,ratedate)*
+from base_1
+)
+select brand_name,sku_id,ratecontent, length(ratecontent) as comment_length,id
+from base
+where ratecontent!='此用户没有填写评论!' and brand_name='完美日记' '''
+
+# 定义从gp取数的函数
+conn = psycopg2.connect(dbname='name', host='ip', port='port', user='name', password='password')
+cursor = conn.cursor()
+cursor.execute(sql)
+df = cursor.fetchall()
+df = pd.DataFrame(df, columns=['brand_name', 'sku_id', 'ratecontent', 'comment_length','id'])
+
+# 定义n和cpu数
+n = len(df)
+cpu = 32
+
+# 定义mongo存取数据
+client = MongoClient('mongodb://name:password@ip:port',connect=False)
+
+def generate_tasks():
+    for index1 in range(n):
+        for index2 in range(index1 + 1, n):
+            yield index1, index2
+
+
+def count():
+    for i in range(int((n * n - n) / 2)):
+        yield i
+
+
+def check_text_similarity(task):
+    collection = client.get_database("perfect_diary").get_collection('sim')
+    index1, index2 = task
+    s1 = df['ratecontent'][index1]
+    s2 = df['ratecontent'][index2]
+    js = Levenshtein.ratio(s1, s2)
+    #print({'id_1':df['id'][index1], 'id_2': df['id'][index2], 'js': js,'brand':df['brand_name'][index1]})
+    count = next(jishu)
+    # 信号——每跑一千万组输出一次
+    if (count / 10000000 - int(count / 10000000)) == 0:
+        print(str(os.getpid()) + '进程已经完成' + str(int(count / 10000000)) + '千万组计算')
+    if js > 0.5:
+        rst_sim = {'id_1':df['id'][index1], 'id_2': df['id'][index2], 'js': js,'brand':df['brand_name'][index1]}
+        collection.insert_one(rst_sim)
+
+if __name__ == '__main__':
+    jishu = count()
+    with Pool(cpu) as p:
+        for _ in p.imap(check_text_similarity, generate_tasks(), 1000):
+            pass
