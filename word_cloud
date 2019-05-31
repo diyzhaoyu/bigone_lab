@@ -1,0 +1,76 @@
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
+import jieba
+from aip import AipNlp
+import pandas as pd
+import numpy as np
+def define_valueables():
+    APP_ID=""" 你的 APPID AK SK """
+    API_KEY = ''
+    SECRET_KEY = ''
+    client = AipNlp(APP_ID, API_KEY, SECRET_KEY)
+    commentTag_list = []
+    return APP_ID,API_KEY,SECRET_KEY,client,commentTag_list
+#读文件
+def read_file (input_path):
+    with open(input_path,'r',encoding='gbk') as file:
+        contentlist=[]
+        for line in file.readlines():
+            line=line.strip('\n')
+            contentlist.append(line)
+    return contentlist
+
+#定义一条评论观点抽取函数
+def comment_extract(text):
+    """ 调用评论观点抽取 """
+    client.commentTag(text)
+    """ 如果有可选参数 """
+    options = {}
+    options["type"] = 12
+    """ 带参数调用评论观点抽取 """
+    rst = client.commentTag(text, options)
+    if "items" in rst:
+        for i in range(0,len(rst['items'])):
+            commentTag_list.append(rst['items'][i]['prop']+rst['items'][i]['adj'])
+
+
+# 全部评论观点抽取函数
+def comment_extract_all(contentlist):
+    for i in range(len(contentlist)):
+        if (i / 100 - int(i / 100)) == 0:
+            print(str(i)+'开始计算：')
+        try:
+            comment_extract(contentlist[i])
+        except Exception:
+            pass
+    return commentTag_list
+
+#作词云
+def word_cloud(commentTag_list):
+    wl_space_split = " ".join(commentTag_list)
+    wordcloud = WordCloud(
+     background_color="white",
+     width=4000,height=3000,
+    font_path=r'/Users/petzhao/Downloads/msyh_downcc.com/msyh.ttf',#不加这一句显示口字形乱码
+    margin=2)
+    my_wordcloud=wordcloud.generate(wl_space_split)
+    plt.imshow(my_wordcloud)
+    plt.axis("off")
+    plt.savefig(output_path,dpi=500,bbox_inches = 'tight')
+
+if __name__ =='__main__':
+    brand_list=['zyq','mbl','mldj','zeesea','kzl','pd','ysl','dior']
+    for brand in brand_list:
+        input_path = '/Users/petzhao/Desktop/' + brand + '.txt'
+        output_path = '/Users/petzhao/Desktop/' + brand + '.jpg'
+        #获取参数
+        APP_ID, API_KEY, SECRET_KEY, client, commentTag_list = define_valueables()
+        #评论观点抽取
+        print(brand + '开始评论观点抽取：')
+        contentlist=read_file(input_path)
+        comment_extract_all(contentlist)
+        print(brand + '结束评论观点抽取。。。')
+        #做词云
+        print(brand + '开始做词云')
+        word_cloud(commentTag_list)
+        print(brand + '结束做词云。。。')
