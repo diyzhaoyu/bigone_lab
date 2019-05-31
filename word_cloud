@@ -4,10 +4,11 @@ import jieba
 from aip import AipNlp
 import pandas as pd
 import numpy as np
-def define_valueables():
+
+def define_valueables(): 
     APP_ID=""" 你的 APPID AK SK """
-    API_KEY = ''
-    SECRET_KEY = ''
+    API_KEY = '70pmrqm9Cpets1FuoG2Lgs4w'
+    SECRET_KEY = 'dHTxIoWBFwEIPRBCrPkTUeoh1ubAbpry'
     client = AipNlp(APP_ID, API_KEY, SECRET_KEY)
     commentTag_list = []
     return APP_ID,API_KEY,SECRET_KEY,client,commentTag_list
